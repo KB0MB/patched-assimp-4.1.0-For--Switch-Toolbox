@@ -1,0 +1,42 @@
+name: Build macOS Assimp
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-13
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: |
+          cmake -S . -B build-macos \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DBUILD_SHARED_LIBS=ON \
+            -DASSIMP_BUILD_ASSIMP_TOOLS=OFF \
+            -DASSIMP_BUILD_TESTS=OFF \
+            -DASSIMP_BUILD_SAMPLES=OFF
+
+      - name: Build
+        run: |
+          cmake --build build-macos --target assimp -j$(sysctl -n hw.ncpu)
+
+      - name: Find output
+        run: |
+          find build-macos -name "libassimp*.dylib*" -print
+
+      - name: Strip
+        run: |
+          strip -x build-macos/code/libassimp.dylib || true
+
+      - name: Upload dylib
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-libassimp
+          path: |
+            build-macos/code/libassimp.dylib
+            build-macos/code/libassimp*.dylib*
