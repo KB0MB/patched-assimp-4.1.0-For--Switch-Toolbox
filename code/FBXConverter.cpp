@@ -1306,14 +1306,20 @@ unsigned int Converter::ConvertMeshSingleMaterial( const MeshGeometry& mesh, con
     }
 
     // copy vertex colors
-    for ( unsigned int i = 0; i < AI_MAX_NUMBER_OF_COLOR_SETS; ++i ) {
-        const std::vector<aiColor4D>& colors = mesh.GetVertexColors( i );
-        if ( colors.empty() ) {
+    unsigned int out_color_index = 0;
+    for (unsigned int i = 0; i < AI_MAX_NUMBER_OF_COLOR_SETS; ++i) {
+        const std::vector<aiColor4D>& colors = mesh.GetVertexColors(i);
+        if (colors.empty()) {
+            continue;
+        }
+
+        if (out_color_index >= AI_MAX_NUMBER_OF_COLOR_SETS) {
             break;
         }
 
-        out_mesh->mColors[ i ] = new aiColor4D[ vertices.size() ];
-        std::copy( colors.begin(), colors.end(), out_mesh->mColors[ i ] );
+        out_mesh->mColors[out_color_index] = new aiColor4D[vertices.size()];
+        std::copy(colors.begin(), colors.end(), out_mesh->mColors[out_color_index]);
+        ++out_color_index;
     }
 
     if ( !doc.Settings().readMaterials || mindices.empty() ) {
@@ -1447,13 +1453,21 @@ unsigned int Converter::ConvertMeshMultiMaterial( const MeshGeometry& mesh, cons
 
     // allocate vertex colors
     unsigned int num_vcs = 0;
-    for ( unsigned int i = 0; i < AI_MAX_NUMBER_OF_COLOR_SETS; ++i, ++num_vcs ) {
-        const std::vector<aiColor4D>& colors = mesh.GetVertexColors( i );
-        if ( colors.empty() ) {
+    std::vector<unsigned int> vc_indices;
+
+    for (unsigned int i = 0; i < AI_MAX_NUMBER_OF_COLOR_SETS; ++i) {
+        const std::vector<aiColor4D>& colors = mesh.GetVertexColors(i);
+        if (colors.empty()) {
+            continue;
+        }
+
+        if (num_vcs >= AI_MAX_NUMBER_OF_COLOR_SETS) {
             break;
         }
 
-        out_mesh->mColors[ i ] = new aiColor4D[ vertices.size() ];
+        vc_indices.push_back(i);
+        out_mesh->mColors[num_vcs] = new aiColor4D[vertices.size()];
+        ++num_vcs;
     }
 
     unsigned int cursor = 0, in_cursor = 0;
@@ -1510,9 +1524,9 @@ unsigned int Converter::ConvertMeshMultiMaterial( const MeshGeometry& mesh, cons
                 out_mesh->mTextureCoords[ i ][ cursor ] = aiVector3D( uvs[ in_cursor ].x, uvs[ in_cursor ].y, 0.0f );
             }
 
-            for ( unsigned int i = 0; i < num_vcs; ++i ) {
-                const std::vector<aiColor4D>& cols = mesh.GetVertexColors( i );
-                out_mesh->mColors[ i ][ cursor ] = cols[ in_cursor ];
+            for (unsigned int i = 0; i < num_vcs; ++i) {
+                const std::vector<aiColor4D>& cols = mesh.GetVertexColors(vc_indices[i]);
+                out_mesh->mColors[i][cursor] = cols[in_cursor];
             }
         }
     }
